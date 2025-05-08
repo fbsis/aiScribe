@@ -1,12 +1,13 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import PatientList from "./pages/PatientList";
-
+import PatientDetailsPage from './pages/PatientDetailsPage';
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<PatientList />} />
+        <Route path="/patients/details/:id" element={<PatientDetailsPage />} />
       </Routes>
     </Router>
   );
