@@ -1,7 +1,6 @@
 import { IStorageService } from '../../domain/services/IStorageService';
-import { AudioFileValue } from '../../domain/value-objects/AudioFile';
 import { MinioService } from './minioService';
-
+import { AudioFileValue } from '../../domain/value-objects/AudioFile';
 export class StorageService implements IStorageService {
   private minioService: MinioService;
 
@@ -10,7 +9,7 @@ export class StorageService implements IStorageService {
   }
 
   async uploadAudio(patientId: string, audioLocate: string): Promise<AudioFileValue> {
-    return this.minioService.uploadAudio(patientId, audioLocate);
+      return this.minioService.uploadAudio(patientId, audioLocate);
   }
 
   async getAudioUrl(filePath: string): Promise<string> {

@@ -2,16 +2,16 @@ import { DataSource } from 'typeorm';
 import { Note, NoteStatus } from '../../infrastructure/database/entities/Note';
 import { AudioFile } from '../../infrastructure/database/entities/AudioFile';
 import { IStorageService } from '../../domain/services/IStorageService';
-import { IAIService } from '../../domain/services/IAIService';
 import { NotFoundError } from '../../domain/errors/DomainError';
 import { DatabaseError } from '../../infrastructure/errors/InfrastructureError';
 import { logger } from '../../shared/utils/logger';
+import { QueueManager } from '../../infrastructure/queue/QueueManager';
 
 export class NoteService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly storageService: IStorageService,
-    private readonly aiService: IAIService
+    private readonly queueManager: QueueManager
   ) {}
 
   async getNotesByPatientId(patientId: string): Promise<Note[]> {
@@ -57,19 +57,22 @@ export class NoteService {
   async createTextNote(data: { patientId: string; content: string}): Promise<Note> {
     try {
       logger.debug(`Creating text note for patient ${data.patientId}`);
-      const summary = await this.aiService.generateSummary(data.content);
-      logger.debug(`Generated summary for note`);
       
-      const status = NoteStatus.PROCESSING; 
       const noteRepository = this.dataSource.getRepository(Note);
       const note = noteRepository.create({
         ...data,
-        summary,
-        status,
+        status: NoteStatus.PROCESSING,
       });
 
       await noteRepository.save(note);
       logger.info(`Created text note with id ${note.id} for patient ${data.patientId}`);
+
+      // Add to summary queue
+      await this.queueManager.addSummaryJob({
+        noteId: note.id,
+        content: data.content
+      });
+
       return note;
     } catch (error) {
       logger.error(`Error creating text note for patient ${data.patientId}:`, error);
@@ -85,27 +88,15 @@ export class NoteService {
       logger.debug(`Uploading audio file for patient ${patientId}`);
       const audioFileValue = await this.storageService.uploadAudio(patientId, audioLocate);
       logger.debug(`Audio file uploaded successfully`);
-      
-      // Transcribe audio
-      logger.debug(`Transcribing audio for patient ${patientId}`);
-      const transcription = await this.aiService.transcribeAudio(audioLocate);
-      logger.debug(`Audio transcription completed`);
-      
-      // Generate summary
-      logger.debug(`Generating summary for transcription`);
-      const summary = await this.aiService.generateSummary(transcription);
-      logger.debug(`Summary generated successfully`);
 
       const noteRepository = this.dataSource.getRepository(Note);
       const audioFileRepository = this.dataSource.getRepository(AudioFile);
 
       // Create note with audio file
-      const status = NoteStatus.PROCESSING;
       const note = noteRepository.create({
         patientId,
-        content: transcription,
-        summary,
-        status,
+        content: '',
+        status: NoteStatus.PROCESSING,
       });
 
       await noteRepository.save(note);
@@ -115,10 +106,18 @@ export class NoteService {
         noteId: note.id,
         filePath: audioFileValue.getFilePath(),
         duration: audioFileValue.getDuration(),
+        publicUrl: this.clearUpPublicUrl(audioFileValue.getPublicUrl()),
       });
 
       await audioFileRepository.save(audioFile);
       logger.debug(`Audio file record created for note ${note.id}`);
+
+      // Add to audio processing queue
+      await this.queueManager.addAudioJob({
+        noteId: note.id,
+        patientId,
+        audioFilePath: audioLocate
+      });
 
       const completeNote = await this.getNoteById(note.id) as Note;
       logger.info(`Created audio note with id ${note.id} for patient ${patientId}`);
@@ -163,5 +162,11 @@ export class NoteService {
       logger.error(`Error deleting note with id ${id}:`, error);
       throw new DatabaseError('Failed to delete note');
     }
+  }
+
+  private clearUpPublicUrl(publicUrl: string): string {
+    const minioEndpoint = process.env.MINIO_ENDPOINT || '';
+    const minioStorageUrl = process.env.MINIO_STORAGE_URL || '';
+    return publicUrl.split('?')[0].replace(minioEndpoint, minioStorageUrl);
   }
 } 

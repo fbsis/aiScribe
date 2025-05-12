@@ -17,6 +17,9 @@ export class AudioFile {
   filePath: string;
 
   @Column()
+  publicUrl: string;
+
+  @Column()
   duration: number;
 
   @CreateDateColumn()

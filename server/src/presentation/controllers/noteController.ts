@@ -10,11 +10,13 @@ import { AppDataSource } from '../../infrastructure/database/config';
 import { StorageService } from '../../infrastructure/storage/StorageService';
 import { AIService } from '../../infrastructure/external/AIService';
 import { logger } from '../../shared/utils/logger';
+import { QueueManager } from '../../infrastructure/queue/QueueManager';
 
 const router = Router();
 const storageService = new StorageService();
 const aiService = new AIService();
-const noteService = new NoteService(AppDataSource, storageService, aiService);
+const queueManager = new QueueManager(aiService, storageService);
+const noteService = new NoteService(AppDataSource, storageService, queueManager);
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
@@ -264,27 +266,34 @@ router.post(
   ],
   validateRequest,
   async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    let tempFilePath: string | undefined;
+    
     try {
       if (!req.file) {
         throw new AppError(400, 'Audio file is required');
       }
 
-      // Criar um arquivo temporário com o buffer
-      const tempFilePath = `/tmp/${Date.now()}-${req.file.originalname}`;
+      const uploadsDir = '/tmp/uploads';
+      await fs.promises.mkdir(uploadsDir, { recursive: true });
+      tempFilePath = `${uploadsDir}/${Date.now()}-${req.file.originalname}`;
+      
       await fs.promises.writeFile(tempFilePath, req.file.buffer);
+      
+      await fs.promises.access(tempFilePath, fs.constants.F_OK);
 
       const note = await noteService.createAudioNote(
         req.body.patientId,
         tempFilePath
       );
 
-      // Limpar o arquivo temporário após o upload
-      await fs.promises.unlink(tempFilePath).catch(err => 
-        logger.warn(`Failed to delete temporary file ${tempFilePath}:`, err)
-      );
-
       res.status(201).json(note);
     } catch (error) {
+      // If there's an error, try to clean up the temp file
+      if (tempFilePath) {
+        await fs.promises.unlink(tempFilePath).catch(err => 
+          logger.warn(`Failed to delete temporary file ${tempFilePath}:`, err)
+        );
+      }
       next(error);
     }
   }
