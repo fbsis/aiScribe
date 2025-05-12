@@ -5,15 +5,14 @@ import { NoteService } from '../../application/services/noteService';
 import { AppError } from '../middlewares/errorHandler';
 import multer from 'multer';
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import { StorageService } from '@/infrastructure/storage/StorageService';
-import { AIService } from '@/infrastructure/external/AIService';
+import { AppDataSource } from '../../infrastructure/database/config';
+import { StorageService } from '../../infrastructure/storage/StorageService';
+import { AIService } from '../../infrastructure/external/AIService';
 
 const router = Router();
-const prisma = new PrismaClient();
 const storageService = new StorageService();
 const aiService = new AIService();
-const noteService = new NoteService(prisma, storageService, aiService);
+const noteService = new NoteService(AppDataSource, storageService, aiService);
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all notes for a patient
