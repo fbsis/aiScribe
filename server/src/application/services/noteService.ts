@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { DataSource } from 'typeorm';
 import { Note } from '../../domain/entities/Note';
 import { AudioFile } from '../../domain/entities/AudioFile';
 import { IStorageService } from '../../domain/services/IStorageService';
@@ -8,22 +8,21 @@ import { DatabaseError } from '../../infrastructure/errors/InfrastructureError';
 
 export class NoteService {
   constructor(
-    private readonly prisma: PrismaClient,
+    private readonly dataSource: DataSource,
     private readonly storageService: IStorageService,
     private readonly aiService: IAIService
   ) {}
 
   async getNotesByPatientId(patientId: string): Promise<Note[]> {
     try {
-      const notes = await this.prisma.note.findMany({
+      const noteRepository = this.dataSource.getRepository(Note);
+      const notes = await noteRepository.find({
         where: { patientId },
-        include: {
-          audioFile: true,
-        },
-        orderBy: { createdAt: 'desc' },
+        relations: ['audioFile'],
+        order: { createdAt: 'DESC' },
       });
 
-      return notes.map(note => this.mapToNote(note));
+      return notes;
     } catch (error) {
       throw new DatabaseError('Failed to fetch notes');
     }
@@ -31,14 +30,13 @@ export class NoteService {
 
   async getNoteById(id: string): Promise<Note | null> {
     try {
-      const note = await this.prisma.note.findUnique({
+      const noteRepository = this.dataSource.getRepository(Note);
+      const note = await noteRepository.findOne({
         where: { id },
-        include: {
-          audioFile: true,
-        },
+        relations: ['audioFile'],
       });
 
-      return note ? this.mapToNote(note) : null;
+      return note;
     } catch (error) {
       throw new DatabaseError('Failed to fetch note');
     }
@@ -48,14 +46,14 @@ export class NoteService {
     try {
       const summary = await this.aiService.generateSummary(data.content);
       
-      const note = await this.prisma.note.create({
-        data: {
-          ...data,
-          summary,
-        },
+      const noteRepository = this.dataSource.getRepository(Note);
+      const note = noteRepository.create({
+        ...data,
+        summary,
       });
 
-      return this.mapToNote(note);
+      await noteRepository.save(note);
+      return note;
     } catch (error) {
       throw new DatabaseError('Failed to create note');
     }
@@ -72,25 +70,27 @@ export class NoteService {
       // Generate summary
       const summary = await this.aiService.generateSummary(transcription);
 
+      const noteRepository = this.dataSource.getRepository(Note);
+      const audioFileRepository = this.dataSource.getRepository(AudioFile);
+
       // Create note with audio file
-      const note = await this.prisma.note.create({
-        data: {
-          patientId,
-          content: transcription,
-          summary,
-          audioFile: {
-            create: {
-              filePath: audioFileValue.getFilePath(),
-              duration: audioFileValue.getDuration(),
-            },
-          },
-        },
-        include: {
-          audioFile: true,
-        },
+      const note = noteRepository.create({
+        patientId,
+        content: transcription,
+        summary,
       });
 
-      return this.mapToNote(note);
+      await noteRepository.save(note);
+
+      const audioFile = audioFileRepository.create({
+        noteId: note.id,
+        filePath: audioFileValue.getFilePath(),
+        duration: audioFileValue.getDuration(),
+      });
+
+      await audioFileRepository.save(audioFile);
+
+      return this.getNoteById(note.id) as Promise<Note>;
     } catch (error) {
       throw new DatabaseError('Failed to create audio note');
     }
@@ -98,9 +98,10 @@ export class NoteService {
 
   async deleteNote(id: string): Promise<boolean> {
     try {
-      const note = await this.prisma.note.findUnique({
+      const noteRepository = this.dataSource.getRepository(Note);
+      const note = await noteRepository.findOne({
         where: { id },
-        include: { audioFile: true },
+        relations: ['audioFile'],
       });
 
       if (!note) {
@@ -113,9 +114,7 @@ export class NoteService {
       }
 
       // Delete note
-      await this.prisma.note.delete({
-        where: { id },
-      });
+      await noteRepository.remove(note);
 
       return true;
     } catch (error) {
@@ -124,23 +123,5 @@ export class NoteService {
       }
       throw new DatabaseError('Failed to delete note');
     }
-  }
-
-  private mapToNote(data: any): Note {
-    // Map database entity to domain entity
-    return new Note(
-      data.id,
-      data.patientId,
-      data.content,
-      data.summary,
-      data.audioFile ? new AudioFile(
-        data.audioFile.id,
-        data.audioFile.noteId,
-        data.audioFile.filePath,
-        data.audioFile.duration
-      ) : undefined,
-      data.createdAt,
-      data.updatedAt
-    );
   }
 } 
