@@ -10,6 +10,8 @@ import { AppDataSource } from './infrastructure/database/config';
 import { patientRoutes } from './presentation/controllers/patientController';
 import { noteRoutes } from './presentation/controllers/noteController';
 import { authRoutes } from './presentation/controllers/AuthController';
+import { setupBullManager } from './presentation/setupBullManager';
+
 // Load environment variables
 config();
 
@@ -23,6 +25,9 @@ app.use(express.json());
 
 // Setup Swagger
 setupSwagger(app);
+
+// Setup Bull Board
+setupBullManager(app);
 
 // Routes
 app.use('/auth', authRoutes);
