@@ -13,7 +13,7 @@
       ]
     }
   },
-  "forwardPorts": [3000, 5173, 5432, 9000, 9001],
-  "postCreateCommand": "npm install -g concurrently && cd server && npm install && npm run seed && cd ../client && npm install && cd .. && concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
+  "forwardPorts": [3000, 5173, 5432, 9000, 9001, 9229],
+  "postCreateCommand": "chmod +x .devcontainer/setup.sh && .devcontainer/setup.sh",
   "remoteUser": "root"
 } 
