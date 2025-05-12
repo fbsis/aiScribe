@@ -1,5 +1,3 @@
-import { ValidationError } from '../errors/DomainError';
-
 export class AudioFileValue {
   constructor(
     private readonly filePath: string,
@@ -34,6 +32,9 @@ export class AudioFileValue {
   }
 
   public equals(other: AudioFileValue): boolean {
+    if (!other) {
+      return false;
+    }
     return this.filePath === other.filePath && this.duration === other.duration;
   }
 } 

@@ -12,6 +12,10 @@ export class Content {
     if (!this.value || this.value.trim().length === 0) {
       throw new ValidationError('Content cannot be empty');
     }
+
+    if (this.value.length > 10000) {
+      throw new ValidationError('Content must be at most 10000 characters long');
+    }
   }
 
   public getValue(): string {
@@ -19,6 +23,9 @@ export class Content {
   }
 
   public equals(other: Content): boolean {
+    if (!other) {
+      return false;
+    }
     return this.value === other.value;
   }
 } 

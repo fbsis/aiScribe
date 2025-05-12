@@ -12,6 +12,14 @@ export class Name {
     if (!this.value || this.value.trim().length === 0) {
       throw new ValidationError('Name cannot be empty');
     }
+
+    if(this.value.length < 2) {
+      throw new ValidationError('Name must be at least 2 characters long');
+    }
+
+    if (this.value.length > 100) {
+      throw new ValidationError('Name cannot be longer than 100 characters');
+    }
   }
 
   public getValue(): string {
@@ -19,6 +27,9 @@ export class Name {
   }
 
   public equals(other: Name): boolean {
+    if (!other) {
+      return false;
+    }
     return this.value === other.value;
   }
 } 
