@@ -1,20 +1,19 @@
-import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from 'dotenv';
-import { errorHandler } from './presentation/middlewares/errorHandler';
-import { patientRoutes } from './presentation/controllers/patientController';
-import { noteRoutes } from './presentation/controllers/noteController';
+import { authMiddleware } from './presentation/middlewares/authMiddleware';
+import { setupSwagger } from './presentation/swagger';
 import { logger } from './shared/utils/logger';
 import { AppDataSource } from './infrastructure/database/config';
-
+import { patientRoutes } from './presentation/controllers/patientController';
+import { noteRoutes } from './presentation/controllers/noteController';
+import { authRoutes } from './presentation/controllers/AuthController';
 // Load environment variables
 config();
 
 const app = express();
-const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -22,18 +21,31 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
+// Setup Swagger
+setupSwagger(app);
+
 // Routes
-app.use('/api/patients', patientRoutes);
-app.use('/api/notes', noteRoutes);
+app.use('/auth', authRoutes);
+app.use('/patients',authMiddleware,  patientRoutes);
+app.use('/notes', authMiddleware, noteRoutes);
+
+// TODO: Import and use other routes (patients, notes) once controllers are updated with Swagger docs
 
 // Error handling
-app.use(errorHandler);
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
+const PORT = process.env.PORT || 3000;
+
+// Initialize database and start server
 AppDataSource.initialize()
   .then(() => {
     logger.info('Database connection established');
-    app.listen(port, () => {
-      logger.info(`Server is running on port ${port}`);
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+      logger.info(`API documentation available at http://localhost:${PORT}/api-docs`);
     });
   })
   .catch((error) => {

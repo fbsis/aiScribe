@@ -4,7 +4,7 @@ import { faker } from '@faker-js/faker';
 
 export async function seedPatients(dataSource: DataSource): Promise<void> {
   const patientRepository = dataSource.getRepository(Patient);
-  
+    
   // Create 10 random patients
   const patients = Array.from({ length: 10 }, () => {
     const patient = new Patient();
