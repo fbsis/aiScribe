@@ -10,9 +10,9 @@ import { filterPatientsByName } from "../utils/patientFilters";
 
 export default function PatientList() {
   const [search, setSearch] = useState("");
-  const { data: patients, isLoading } = usePatients();
+  const { data: patientsData, isLoading } = usePatients();
 
-  const filteredPatients = filterPatientsByName(patients, search);
+  const filteredPatients = filterPatientsByName(patientsData ?? [], search);
 
   return (
     <PageContainer>

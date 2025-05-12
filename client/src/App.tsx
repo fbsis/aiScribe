@@ -6,8 +6,9 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<PatientList />} />
-        <Route path="/patients/details/:id" element={<PatientDetailsPage />} />
+      <Route path="/" element={<PatientList />} />
+      <Route path="/patients" element={<PatientList />} />
+      <Route path="/patients/:id" element={<PatientDetailsPage />} />
       </Routes>
     </Router>
   );

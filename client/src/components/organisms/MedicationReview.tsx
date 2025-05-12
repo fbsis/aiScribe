@@ -7,11 +7,16 @@ type Medication = {
   route: string;
 };
 
-type MedicationReviewProps = {
-  medications: Medication[];
-};
+interface MedicationReviewProps {
+  medications?: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    route: string;
+  }>;
+}
 
-const MedicationReview: React.FC<MedicationReviewProps> = ({ medications }) => (
+const MedicationReview: React.FC<MedicationReviewProps> = ({ medications = [] }) => (
   <div style={{ marginBottom: 32 }}>
     <h3>Medication Review</h3>
     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>

@@ -1,23 +1,40 @@
-import { useQuery } from "@tanstack/react-query";
-import { Patient } from "../types/patient";
-
-const mockPatients: Patient[] = [
-  { name: "John Doe", status: "Assigned", task: "SOC/ROC", assigned: "Katie" },
-  { name: "Jane Smith", status: "Assigned", task: "Discharge", assigned: "Celeste" },
-  { name: "Robert Johnson", status: "Assigned", task: "Recertification", assigned: "Amanda" },
-  { name: "John Doe", status: "On Hold", task: "Hospice", assigned: "Amy" },
-  { name: "Jane Smith", status: "On Hold", task: "Full Chart Audit", assigned: "Jen" },
-  { name: "Robert Johnson", status: "On Hold", task: "SOC/ROC", assigned: "John" },
-];
-
-async function fetchPatients(): Promise<Patient[]> {
-  await new Promise((res) => setTimeout(res, 500));
-  return mockPatients;
-}
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { patientService, Patient, CreatePatientRequest, UpdatePatientRequest } from "../services/patientService";
 
 export function usePatients() {
-  return useQuery<Patient[]>({
+  const queryClient = useQueryClient();
+
+  const query = useQuery<Patient[]>({
     queryKey: ["patients"],
-    queryFn: fetchPatients,
+    queryFn: patientService.getAllPatients,
   });
+
+  const createPatient = useMutation({
+    mutationFn: (patient: CreatePatientRequest) => patientService.createPatient(patient),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+    },
+  });
+
+  const updatePatient = useMutation({
+    mutationFn: ({ id, patient }: { id: string; patient: UpdatePatientRequest }) =>
+      patientService.updatePatient(id, patient),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+    },
+  });
+
+  const deletePatient = useMutation({
+    mutationFn: (id: string) => patientService.deletePatient(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+    },
+  });
+
+  return {
+    ...query,
+    createPatient,
+    updatePatient,
+    deletePatient,
+  };
 } 

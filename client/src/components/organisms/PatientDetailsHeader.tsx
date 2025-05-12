@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Button,
@@ -6,10 +6,18 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import BackButton from '../atoms/BackButton';
 import StatusBadge from '../atoms/StatusBadge';
+import { Patient } from '../../types/patient';
 
-const PatientDetailsHeader: React.FC = () => {
+interface PatientDetailsHeaderProps {
+  patient?: Patient;
+}
+
+const PatientDetailsHeader: React.FC<PatientDetailsHeaderProps> = ({ patient }) => {
+  const navigate = useNavigate();
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box
@@ -22,16 +30,16 @@ const PatientDetailsHeader: React.FC = () => {
       >
         <Box sx={{ p: '20px 24px 8px 24px' }}>
           <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', mb: 1 }}>
-            <BackButton />
+            <BackButton onClick={() => navigate('/patients')} />
             <Typography variant="body1" sx={{ fontWeight: 500, mr: 2 }}>
-              Patient: Amanda Collins
+              Patient: {patient?.name || 'Loading...'}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
               <Typography variant="body2" sx={{ mr: 1 }}>Status:</Typography>
-              <StatusBadge status="In progress" />
+              <StatusBadge status={patient?.status || 'Loading'} />
             </Box>
             <Typography variant="body2" sx={{ mr: 2 }}>
-              Assigned to: John
+              Assigned to: {patient?.assigned || 'Loading...'}
             </Typography>
             <Box sx={{ flex: 1 }} />
             <Button

@@ -1,183 +1,87 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  IconButton,
-  Fab,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Divider,
-} from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  PlayArrow as PlayArrowIcon,
-  Stop as StopIcon,
-  Add as AddIcon,
-} from '@mui/icons-material';
-import NoteForm from './NoteForm';
+import React from 'react';
+import { Box, Typography, Button } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { useNotes } from '../../hooks/useNotes';
+import NoteModal from './NoteModal';
 
-interface Note {
-  id: string;
-  text: string;
-  timestamp: string;
-  audioUrl?: string;
+interface NotesPanelProps {
+  patientId?: string;
 }
 
-const NotesPanel: React.FC = () => {
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: '1',
-      text: 'Patient reported increased pain in left knee during morning exercises.',
-      timestamp: '2024-03-20 09:30 AM',
-    },
-    {
-      id: '2',
-      text: 'Administered prescribed pain medication. Patient resting comfortably.',
-      timestamp: '2024-03-20 10:15 AM',
-      audioUrl: '/path/to/audio.mp3',
-    },
-  ]);
-  const [isPlaying, setIsPlaying] = useState<string | null>(null);
-  const [showNoteForm, setShowNoteForm] = useState(false);
-  const [noteType, setNoteType] = useState<'text' | 'audio'>('text');
-  const [textNote, setTextNote] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleDeleteNote = (id: string) => {
-    setNotes(notes.filter(note => note.id !== id));
-  };
-
-  const handlePlayAudio = (id: string) => {
-    setIsPlaying(isPlaying === id ? null : id);
-    // TODO: Implement audio playback logic
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      const audioChunks: Blob[] = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-    }
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    // TODO: Stop the MediaRecorder
-  };
-
-  const handleSubmit = async () => {
-    setIsUploading(true);
-    try {
-      // TODO: Implement API call to save note
-      const newNote: Note = {
-        id: Date.now().toString(),
-        text: textNote,
-        timestamp: new Date().toLocaleString(),
-        audioUrl: audioUrl || undefined,
-      };
-      setNotes([newNote, ...notes]);
-      setShowNoteForm(false);
-      setTextNote('');
-      setAudioUrl(null);
-    } catch (error) {
-      console.error('Error saving note:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setShowNoteForm(false);
-    setTextNote('');
-    setAudioUrl(null);
-  };
+const NotesPanel: React.FC<NotesPanelProps> = ({ patientId }) => {
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const {
+    notes,
+    isAddingNote,
+    noteType,
+    textNote,
+    isRecording,
+    audioUrl,
+    isUploading,
+    setNoteType,
+    setTextNote,
+    setAudioUrl,
+    handleAddNote,
+    handleCancelAdd,
+    startRecording,
+    stopRecording,
+    handleSubmit,
+    handleDeleteNote,
+    formatDate,
+  } = useNotes(patientId);
 
   return (
-    <Box sx={{ height: '100%', position: 'relative' }}>
-      <Box sx={{ p: 2, pb: 8 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Notes
-        </Typography>
-        <List>
-          {notes.map((note, index) => (
-            <React.Fragment key={note.id}>
-              <ListItem>
-                <ListItemText
-                  primary={note.text}
-                  secondary={note.timestamp}
-                />
-                <ListItemSecondaryAction>
-                  {note.audioUrl && (
-                    <IconButton
-                      edge="end"
-                      onClick={() => handlePlayAudio(note.id)}
-                      sx={{ mr: 1 }}
-                    >
-                      {isPlaying === note.id ? <StopIcon /> : <PlayArrowIcon />}
-                    </IconButton>
-                  )}
-                  <IconButton
-                    edge="end"
-                    onClick={() => handleDeleteNote(note.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-              {index < notes.length - 1 && <Divider />}
-            </React.Fragment>
-          ))}
-        </List>
+    <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">Notes</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setIsModalOpen(true)}
+          disabled={isAddingNote}
+        >
+          Add Note
+        </Button>
       </Box>
 
-      <Fab
-        color="primary"
-        onClick={() => setShowNoteForm(true)}
-        sx={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-        }}
-      >
-        <AddIcon />
-      </Fab>
+      <Box sx={{ flex: 1, overflow: 'auto' }}>
+        {notes.map((note) => (
+          <Box
+            key={note.id}
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: 1,
+              bgcolor: 'background.paper',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {formatDate(note.createdAt)}
+              </Typography>
+              <Button
+                size="small"
+                color="error"
+                onClick={() => handleDeleteNote(note.id)}
+              >
+                Delete
+              </Button>
+            </Box>
+            {note.type === 'text' ? (
+              <Typography>{note.content}</Typography>
+            ) : (
+              <audio controls src={note.content} style={{ width: '100%' }} />
+            )}
+          </Box>
+        ))}
+      </Box>
 
-      {showNoteForm && (
-        <NoteForm
-          noteType={noteType}
-          textNote={textNote}
-          isRecording={isRecording}
-          audioUrl={audioUrl}
-          isUploading={isUploading}
-          setNoteType={setNoteType}
-          setTextNote={setTextNote}
-          setAudioUrl={setAudioUrl}
-          startRecording={startRecording}
-          stopRecording={stopRecording}
-          handleSubmit={handleSubmit}
-          handleCancel={handleCancel}
-        />
-      )}
+      <NoteModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmit}
+      />
     </Box>
   );
 };

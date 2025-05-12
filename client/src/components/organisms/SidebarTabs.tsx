@@ -25,27 +25,24 @@ interface TabPanelProps {
   value: number;
 }
 
-const TabPanel = (props: TabPanelProps) => {
-  const { children, value, index, ...other } = props;
+interface SidebarTabsProps {
+  loading: boolean;
+  patientId?: string;
+}
 
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`sidebar-tabpanel-${index}`}
-      aria-labelledby={`sidebar-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ height: '100%', overflow: 'auto' }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-};
+const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
+  <div
+    role="tabpanel"
+    hidden={value !== index}
+    id={`sidebar-tabpanel-${index}`}
+    aria-labelledby={`sidebar-tab-${index}`}
+    style={{ height: '100%' }}
+  >
+    {value === index && children}
+  </div>
+);
 
-const SidebarTabs: React.FC<{ loading: boolean }> = ({ loading }) => {
+const SidebarTabs: React.FC<SidebarTabsProps> = ({ loading, patientId }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -85,7 +82,7 @@ const SidebarTabs: React.FC<{ loading: boolean }> = ({ loading }) => {
         ) : (
           <>
             <TabPanel value={activeTab} index={0}>
-              <NotesPanel patientId="123" />
+              <NotesPanel patientId={patientId} />
             </TabPanel>
             <TabPanel value={activeTab} index={1}>
               <ICD10Tab />

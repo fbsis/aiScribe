@@ -6,11 +6,15 @@ type DiagnosisCode = {
   type: string;
 };
 
-type DiagnosisCodesProps = {
-  codes: DiagnosisCode[];
-};
+interface DiagnosisCodesProps {
+  codes?: Array<{
+    code: string;
+    description: string;
+    type: string;
+  }>;
+}
 
-const DiagnosisCodes: React.FC<DiagnosisCodesProps> = ({ codes }) => (
+const DiagnosisCodes: React.FC<DiagnosisCodesProps> = ({ codes = [] }) => (
   <div style={{ marginBottom: 32 }}>
     <h3>Diagnosis Codes (ICD-10):</h3>
     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
