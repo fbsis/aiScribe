@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { Note } from '../../infrastructure/database/entities/Note';
+import { Note, NoteStatus } from '../../infrastructure/database/entities/Note';
 import { AudioFile } from '../../infrastructure/database/entities/AudioFile';
 import { IStorageService } from '../../domain/services/IStorageService';
 import { IAIService } from '../../domain/services/IAIService';
@@ -54,16 +54,18 @@ export class NoteService {
     }
   }
 
-  async createTextNote(data: { patientId: string; content: string }): Promise<Note> {
+  async createTextNote(data: { patientId: string; content: string}): Promise<Note> {
     try {
       logger.debug(`Creating text note for patient ${data.patientId}`);
       const summary = await this.aiService.generateSummary(data.content);
       logger.debug(`Generated summary for note`);
       
+      const status = NoteStatus.PROCESSING; 
       const noteRepository = this.dataSource.getRepository(Note);
       const note = noteRepository.create({
         ...data,
         summary,
+        status,
       });
 
       await noteRepository.save(note);
@@ -98,10 +100,12 @@ export class NoteService {
       const audioFileRepository = this.dataSource.getRepository(AudioFile);
 
       // Create note with audio file
+      const status = NoteStatus.PROCESSING;
       const note = noteRepository.create({
         patientId,
         content: transcription,
         summary,
+        status,
       });
 
       await noteRepository.save(note);

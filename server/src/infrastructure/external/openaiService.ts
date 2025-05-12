@@ -24,7 +24,7 @@ export class OpenAIService implements IAIService {
         file: fs.createReadStream(audioLocate),
         model: this.transcriptionModel,
       });
-
+      logger.info("Transcription completed:", transcription);
       return transcription.text;
     } catch (error) {
       logger.error("Error transcribing audio:", error);
