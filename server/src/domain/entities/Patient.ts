@@ -16,8 +16,8 @@ export class Patient {
   }
 
   private validate(): void {
-    if (!this.id) {
-      throw new ValidationError('Patient ID is required');
+    if (this.id && this.id.trim() === '') {
+      throw new ValidationError('Patient ID cannot be empty string');
     }
   }
 
@@ -55,5 +55,16 @@ export class Patient {
     this.name = name;
     this.dob = dob;
     this.updatedAt = new Date();
+  }
+
+  public toJSON(): any {
+    return {
+      id: this.id,
+      name: this.name.getValue(),
+      dob: this.dob.getValue(),
+      createdAt: this.createdAt, 
+      updatedAt: this.updatedAt,
+      notes: this.notes.map(note => note.toJSON())
+    };
   }
 } 

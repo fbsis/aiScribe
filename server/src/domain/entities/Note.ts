@@ -59,4 +59,17 @@ export class Note {
     this.audioFile = undefined;
     this.updatedAt = new Date();
   }
+
+  public toJSON(): any {
+    return {
+      id: this.id,
+      patientId: this.patientId,
+      content: this.content.getValue(),
+      summary: this.summary,  
+      audioFile: this.audioFile?.toJSON(),
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt
+    };
+  }
 } 
+  

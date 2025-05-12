@@ -35,4 +35,14 @@ export class AudioFile {
   public updateFileData(fileData: AudioFileValue): void {
     this.fileData = fileData;
   }
+
+  public toJSON(): any {
+    return {
+      id: this.id,
+      noteId: this.noteId,
+      filePath: this.fileData.getFilePath(),
+      duration: this.fileData.getDuration(),
+      createdAt: this.createdAt
+    };
+  }
 } 
