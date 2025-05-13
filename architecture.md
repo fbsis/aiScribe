@@ -3,6 +3,110 @@
 ## Overview
 This document outlines the architecture for the Medical Notes System, following Domain-Driven Design (DDD) principles and using modern technologies. The project is organized as a monorepo containing both frontend and backend applications.
 
+### System Overview
+```mermaid
+graph TB
+    Client[Client Application] -->|HTTP/HTTPS| API[API Gateway]
+    API -->|Routes| Server[Backend Server]
+    Server -->|Store| DB[(PostgreSQL)]
+    Server -->|Store| MinIO[(MinIO Storage)]
+    Server -->|Process| OpenAI[OpenAI Services]
+    
+    subgraph Frontend
+        Client
+    end
+    
+    subgraph Backend
+        API
+        Server
+        DB
+        MinIO
+    end
+    
+    subgraph External Services
+        OpenAI
+    end
+```
+
+### Patient Note Creation Flow
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant Server
+    participant Queue
+    participant MinIO
+    participant OpenAI
+    participant DB
+
+    User->>Client: Select Patient
+    User->>Client: Upload Audio/Text
+    Client->>Server: POST /api/notes
+    Server->>MinIO: Store Audio File
+    Server->>Queue: Enqueue Audio Processing
+    Queue->>OpenAI: Process Audio (Async)
+    OpenAI-->>Queue: Transcription Result
+    Queue->>Server: Transcription Complete
+    Server->>Queue: Enqueue Summary Generation
+    Queue->>OpenAI: Generate Summary (Async)
+    OpenAI-->>Queue: Summary Result
+    Queue->>Server: Summary Complete
+    Server->>DB: Save Note
+    Server-->>Client: Note Created
+    Client-->>User: Success Message
+```
+
+### Note Retrieval Flow
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant Server
+    participant DB
+    participant MinIO
+
+    User->>Client: Request Notes
+    Client->>Server: GET /api/notes
+    Server->>DB: Query Notes
+    DB-->>Server: Notes Data
+    Server->>MinIO: Get Audio Files
+    MinIO-->>Server: Audio Files
+    Server-->>Client: Notes with Audio
+    Client-->>User: Display Notes
+```
+
+### Data Processing Flow
+```mermaid
+graph LR
+    A[Raw Audio] -->|Upload| B[MinIO Storage]
+    B -->|Enqueue| C[Audio Processing Queue]
+    C -->|Process| D[OpenAI Whisper]
+    D -->|Transcribe| E[Text Content]
+    E -->|Enqueue| F[Summary Generation Queue]
+    F -->|Process| G[OpenAI GPT]
+    G -->|Summarize| H[Structured Note]
+    H -->|Store| I[Database]
+    
+    subgraph Storage
+        B
+    end
+    
+    subgraph Queue System
+        C
+        F
+    end
+    
+    subgraph Processing
+        D
+        E
+        G
+    end
+    
+    subgraph Persistence
+        I
+    end
+``` 
+
 ## Project Structure
 ```
 medical-notes/
@@ -321,108 +425,3 @@ src/
 - SSL/TLS termination
 - Load balancing configuration
 
-## Data Flow Diagrams
-
-### System Overview
-```mermaid
-graph TB
-    Client[Client Application] -->|HTTP/HTTPS| API[API Gateway]
-    API -->|Routes| Server[Backend Server]
-    Server -->|Store| DB[(PostgreSQL)]
-    Server -->|Store| MinIO[(MinIO Storage)]
-    Server -->|Process| OpenAI[OpenAI Services]
-    
-    subgraph Frontend
-        Client
-    end
-    
-    subgraph Backend
-        API
-        Server
-        DB
-        MinIO
-    end
-    
-    subgraph External Services
-        OpenAI
-    end
-```
-
-### Patient Note Creation Flow
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant Server
-    participant Queue
-    participant MinIO
-    participant OpenAI
-    participant DB
-
-    User->>Client: Select Patient
-    User->>Client: Upload Audio/Text
-    Client->>Server: POST /api/notes
-    Server->>MinIO: Store Audio File
-    Server->>Queue: Enqueue Audio Processing
-    Queue->>OpenAI: Process Audio (Async)
-    OpenAI-->>Queue: Transcription Result
-    Queue->>Server: Transcription Complete
-    Server->>Queue: Enqueue Summary Generation
-    Queue->>OpenAI: Generate Summary (Async)
-    OpenAI-->>Queue: Summary Result
-    Queue->>Server: Summary Complete
-    Server->>DB: Save Note
-    Server-->>Client: Note Created
-    Client-->>User: Success Message
-```
-
-### Note Retrieval Flow
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant Server
-    participant DB
-    participant MinIO
-
-    User->>Client: Request Notes
-    Client->>Server: GET /api/notes
-    Server->>DB: Query Notes
-    DB-->>Server: Notes Data
-    Server->>MinIO: Get Audio Files
-    MinIO-->>Server: Audio Files
-    Server-->>Client: Notes with Audio
-    Client-->>User: Display Notes
-```
-
-### Data Processing Flow
-```mermaid
-graph LR
-    A[Raw Audio] -->|Upload| B[MinIO Storage]
-    B -->|Enqueue| C[Audio Processing Queue]
-    C -->|Process| D[OpenAI Whisper]
-    D -->|Transcribe| E[Text Content]
-    E -->|Enqueue| F[Summary Generation Queue]
-    F -->|Process| G[OpenAI GPT]
-    G -->|Summarize| H[Structured Note]
-    H -->|Store| I[Database]
-    
-    subgraph Storage
-        B
-    end
-    
-    subgraph Queue System
-        C
-        F
-    end
-    
-    subgraph Processing
-        D
-        E
-        G
-    end
-    
-    subgraph Persistence
-        I
-    end
-``` 
