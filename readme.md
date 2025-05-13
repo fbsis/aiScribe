@@ -4,6 +4,7 @@
 
 - [Architecture Overview](architecture.md) - Detailed system architecture, components, and technical decisions
 - [Project Planning](planning.md) - Project roadmap, milestones, and development phases
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project, development setup, and guidelines
 
 ## Requirements
 
