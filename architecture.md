@@ -10,6 +10,8 @@ graph TB
     API -->|Routes| Server[Backend Server]
     Server -->|Store| DB[(PostgreSQL)]
     Server -->|Store| MinIO[(MinIO Storage)]
+    Server -->|Enqueue| Queue[(Redis/BullMQ)]
+    Queue -->|Process| Server
     Server -->|Process| OpenAI[OpenAI Services]
     
     subgraph Frontend
@@ -21,6 +23,7 @@ graph TB
         Server
         DB
         MinIO
+        Queue
     end
     
     subgraph External Services
@@ -43,14 +46,14 @@ sequenceDiagram
     User->>Client: Upload Audio/Text
     Client->>Server: POST /api/notes
     Server->>MinIO: Store Audio File
-    Server->>Queue: Enqueue Audio Processing
-    Queue->>OpenAI: Process Audio (Async)
-    OpenAI-->>Queue: Transcription Result
-    Queue->>Server: Transcription Complete
-    Server->>Queue: Enqueue Summary Generation
-    Queue->>OpenAI: Generate Summary (Async)
-    OpenAI-->>Queue: Summary Result
-    Queue->>Server: Summary Complete
+    Server->>Queue: Enqueue Audio Processing Job
+    Queue->>Server: Process Audio Job
+    Server->>OpenAI: Process Audio
+    OpenAI-->>Server: Transcription Result
+    Server->>Queue: Enqueue Summary Generation Job
+    Queue->>Server: Process Summary Job
+    Server->>OpenAI: Generate Summary
+    OpenAI-->>Server: Summary Result
     Server->>DB: Save Note
     Server-->>Client: Note Created
     Client-->>User: Success Message
@@ -62,16 +65,19 @@ sequenceDiagram
     participant User
     participant Client
     participant Server
+    participant Queue[(Redis/BullMQ)]
     participant DB
     participant MinIO
 
     User->>Client: Request Notes
     Client->>Server: GET /api/notes
+    Server->>Queue: Check Processing Status
+    Queue-->>Server: Job Status
     Server->>DB: Query Notes
     DB-->>Server: Notes Data
     Server->>MinIO: Get Audio Files
     MinIO-->>Server: Audio Files
-    Server-->>Client: Notes with Audio
+    Server-->>Client: Notes with Audio & Status
     Client-->>User: Display Notes
 ```
 
@@ -79,13 +85,15 @@ sequenceDiagram
 ```mermaid
 graph LR
     A[Raw Audio] -->|Upload| B[MinIO Storage]
-    B -->|Enqueue| C[Audio Processing Queue]
-    C -->|Process| D[OpenAI Whisper]
-    D -->|Transcribe| E[Text Content]
-    E -->|Enqueue| F[Summary Generation Queue]
-    F -->|Process| G[OpenAI GPT]
-    G -->|Summarize| H[Structured Note]
-    H -->|Store| I[Database]
+    B -->|Enqueue| C[Redis/BullMQ Queue]
+    C -->|Process| D[Audio Processing Worker]
+    D -->|Process| E[OpenAI Whisper]
+    E -->|Transcribe| F[Text Content]
+    F -->|Enqueue| G[Summary Queue]
+    G -->|Process| H[Summary Worker]
+    H -->|Process| I[OpenAI GPT]
+    I -->|Summarize| J[Structured Note]
+    J -->|Store| K[Database]
     
     subgraph Storage
         B
@@ -93,17 +101,22 @@ graph LR
     
     subgraph Queue System
         C
-        F
-    end
-    
-    subgraph Processing
-        D
-        E
         G
     end
     
-    subgraph Persistence
+    subgraph Workers
+        D
+        H
+    end
+    
+    subgraph Processing
+        E
+        F
         I
+    end
+    
+    subgraph Persistence
+        K
     end
 ``` 
 
@@ -318,18 +331,68 @@ src/
 - Access Policy: Private
 - File Structure: /{patient_id}/{note_id}/{filename}
 
-### Queue System (Bull/Redis)
+### Queue System (BullMQ/Redis)
 - **Audio Processing Queue**
   - Job: Audio transcription
   - Priority: High
   - Retry Policy: 3 attempts
   - Concurrency: 2 workers
+  - Job Data:
+    ```typescript
+    interface AudioProcessingJob {
+      noteId: string;
+      audioFileUrl: string;
+      patientId: string;
+      priority: 'high' | 'medium' | 'low';
+    }
+    ```
 
 - **Summary Generation Queue**
   - Job: Note summarization
   - Priority: Medium
   - Retry Policy: 3 attempts
   - Concurrency: 3 workers
+  - Job Data:
+    ```typescript
+    interface SummaryGenerationJob {
+      noteId: string;
+      transcribedText: string;
+      patientId: string;
+      priority: 'high' | 'medium' | 'low';
+    }
+    ```
+
+- **Queue Configuration**
+  ```typescript
+  interface QueueConfig {
+    redis: {
+      host: string;
+      port: number;
+      password?: string;
+    };
+    defaultJobOptions: {
+      attempts: number;
+      backoff: {
+        type: 'exponential';
+        delay: number;
+      };
+      removeOnComplete: boolean;
+      removeOnFail: boolean;
+    };
+  }
+  ```
+
+- **Queue Monitoring**
+  - Bull Board for queue monitoring
+  - Metrics collection for:
+    - Job completion rates
+    - Processing times
+    - Error rates
+    - Queue lengths
+  - Alerts for:
+    - Failed jobs
+    - Queue size thresholds
+    - Processing delays
 
 ### OpenAI Integration
 - Whisper API for audio transcription
