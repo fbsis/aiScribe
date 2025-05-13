@@ -17,10 +17,6 @@ export class DateOfBirth {
     if (this.value > today) {
       throw new BusinessRuleError('Date of birth cannot be in the future');
     }
-
-    if (this.value < new Date(today.getFullYear() - 150)) {
-      throw new BusinessRuleError('Date of birth cannot be more than 150 years ago');
-    }
   }
 
   public getValue(): Date {

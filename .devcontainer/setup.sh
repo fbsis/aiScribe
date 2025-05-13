@@ -8,7 +8,6 @@ npm install -g concurrently
 echo "🚀 Setting up server..."
 cd server
 npm install
-npm run seed
 
 # Setup client
 echo "🎨 Setting up client..."

@@ -1,4 +1,4 @@
-FROM node:20-bullseye
+FROM node:20
 
 # Install system dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
@@ -7,11 +7,15 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     git \
     procps \
     lsb-release \
+    postgresql-client \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Install global npm packages
+RUN npm install -g npm@latest
 
 # Set working directory
 WORKDIR /workspace

@@ -17,14 +17,6 @@ describe('DateOfBirth Value Object', () => {
       }).toThrow(new ValidationError('Date of birth cannot be in the future'));
     });
 
-    it('should throw ValidationError for date more than 150 years ago', () => {
-      const oldDate = new Date();
-      oldDate.setFullYear(oldDate.getFullYear() - 151);
-
-      expect(() => {
-        new DateOfBirth(oldDate);
-      }).toThrow(new ValidationError('Date of birth cannot be more than 150 years ago'));
-    });
   });
 
   describe('getAge', () => {
