@@ -57,6 +57,7 @@ medical-notes/
 - Backend: Node.js with Express
 - Database: PostgreSQL
 - File Storage: MinIO (S3-compatible)
+- Message Queue: Bull (Redis-based)
 - Frontend: React (TypeScript)
 - API: REST
 
@@ -213,6 +214,19 @@ src/
 - Access Policy: Private
 - File Structure: /{patient_id}/{note_id}/{filename}
 
+### Queue System (Bull/Redis)
+- **Audio Processing Queue**
+  - Job: Audio transcription
+  - Priority: High
+  - Retry Policy: 3 attempts
+  - Concurrency: 2 workers
+
+- **Summary Generation Queue**
+  - Job: Note summarization
+  - Priority: Medium
+  - Retry Policy: 3 attempts
+  - Concurrency: 3 workers
+
 ### OpenAI Integration
 - Whisper API for audio transcription
 - GPT for note summarization
@@ -340,6 +354,7 @@ sequenceDiagram
     participant User
     participant Client
     participant Server
+    participant Queue
     participant MinIO
     participant OpenAI
     participant DB
@@ -348,10 +363,14 @@ sequenceDiagram
     User->>Client: Upload Audio/Text
     Client->>Server: POST /api/notes
     Server->>MinIO: Store Audio File
-    Server->>OpenAI: Transcribe Audio
-    OpenAI-->>Server: Transcription Result
-    Server->>OpenAI: Generate Summary
-    OpenAI-->>Server: Summary Result
+    Server->>Queue: Enqueue Audio Processing
+    Queue->>OpenAI: Process Audio (Async)
+    OpenAI-->>Queue: Transcription Result
+    Queue->>Server: Transcription Complete
+    Server->>Queue: Enqueue Summary Generation
+    Queue->>OpenAI: Generate Summary (Async)
+    OpenAI-->>Queue: Summary Result
+    Queue->>Server: Summary Complete
     Server->>DB: Save Note
     Server-->>Client: Note Created
     Client-->>User: Success Message
@@ -380,23 +399,30 @@ sequenceDiagram
 ```mermaid
 graph LR
     A[Raw Audio] -->|Upload| B[MinIO Storage]
-    B -->|Process| C[OpenAI Whisper]
-    C -->|Transcribe| D[Text Content]
-    D -->|Process| E[OpenAI GPT]
-    E -->|Summarize| F[Structured Note]
-    F -->|Store| G[Database]
+    B -->|Enqueue| C[Audio Processing Queue]
+    C -->|Process| D[OpenAI Whisper]
+    D -->|Transcribe| E[Text Content]
+    E -->|Enqueue| F[Summary Generation Queue]
+    F -->|Process| G[OpenAI GPT]
+    G -->|Summarize| H[Structured Note]
+    H -->|Store| I[Database]
     
     subgraph Storage
         B
     end
     
-    subgraph Processing
+    subgraph Queue System
         C
+        F
+    end
+    
+    subgraph Processing
         D
         E
+        G
     end
     
     subgraph Persistence
-        G
+        I
     end
 ``` 

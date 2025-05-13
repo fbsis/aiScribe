@@ -3,27 +3,120 @@ description: Hasura GQL Deprecated
 globs: 
 alwaysApply: false
 ---
-Technical Interview Project: AI Scribe Notes Management Tool
-Overview
-You will build a lightweight AI Scribe Notes Management Tool. This tool allows users to:
-Create and view AI-generated clinical notes associated with patients.
+# AI Scribe Notes Management Tool
 
+## Overview
+Build a lightweight AI-powered medical notes management system that enables healthcare providers to create, manage, and view clinical notes for patients. The system processes both text and audio inputs, using AI for transcription and summarization.
 
-Input can be either typed or audio (basic audio upload is fine; transcription can use any AI API or open-source model).
+## Core Features
 
+### 1. Patient Management
+- Create and view patient records
+- Basic patient information (name, DOB)
+- Patient search and filtering
+- Patient notes history
 
-Each note is stored and associated with a mock patient.
+### 2. Note Management
+- Create notes via:
+  - Direct text input
+  - Audio upload (with AI transcription)
+- View note details including:
+  - Full note content
+  - AI-generated summary
+  - Associated patient information
+  - Creation timestamp
+- List and filter notes
+- Search notes by content
 
+### 3. AI Processing
+- Audio transcription using OpenAI Whisper
+- Note summarization using OpenAI GPT
+- Asynchronous processing via message queues
+- Error handling and retry mechanisms
 
-Users can view a list of notes and click on a note to view:
+## Technical Requirements
 
+### Frontend (React + TypeScript)
+- Modern, responsive UI
+- Real-time status updates for processing
+- Audio upload interface
+- Patient and note management views
+- Search and filtering capabilities
 
-The note content (transcribed/generated)
+### Backend (Node.js + Express)
+- RESTful API
+- PostgreSQL database
+- MinIO for file storage
+- Bull/Redis for message queues
+- OpenAI API integration
+- TypeScript for type safety
 
+### Infrastructure
+- Docker-based development environment
+- PostgreSQL for data persistence
+- MinIO for audio file storage
+- Redis for message queues
+- Environment-based configuration
 
-Related patient details
+## Architecture Highlights
 
+### Asynchronous Processing
+- Audio files are processed asynchronously
+- Transcription and summarization use separate queues
+- Real-time status updates to frontend
+- Retry mechanisms for failed processing
 
-This tool simulates a core part of a home healthcare compliance suite, and we aim to assess your ability to implement clean, functional, and maintainable code in ak.
+### Data Flow
+1. User uploads audio or enters text
+2. System stores audio in MinIO (if applicable)
+3. Processing is queued for AI services
+4. Results are stored and made available
+5. Frontend is updated with processing status
 
-For Design inspiration you can refer to some working prototypes we have in a related vertical
+### Security Considerations
+- Secure file uploads
+- Input validation
+- API rate limiting
+- Environment-based secrets
+
+## Development Guidelines
+
+### Code Quality
+- Clean, maintainable code
+- TypeScript for type safety
+- Comprehensive error handling
+- Unit and integration tests
+- Documentation
+
+### Performance
+- Asynchronous processing
+- Efficient database queries
+- Proper indexing
+- Caching where appropriate
+
+### User Experience
+- Responsive design
+- Clear processing status
+- Intuitive navigation
+- Error feedback
+- Loading states
+
+## Getting Started
+
+1. Clone the repository
+2. Set up environment variables
+3. Start development environment:
+   ```bash
+   docker-compose up -d
+   ```
+4. Run the setup script:
+   ```bash
+   ./.devcontainer/setup.sh
+   ```
+
+## Design Inspiration
+For UI/UX inspiration, refer to existing healthcare compliance tools in the market. Focus on:
+- Clean, medical-appropriate interfaces
+- Clear information hierarchy
+- Efficient workflow
+- Accessibility standards 

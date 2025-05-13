@@ -11,7 +11,7 @@ export class OpenAIService implements IAIService {
   private readonly transcriptionModel = "gpt-4o-transcribe";
   private readonly summaryModel = "gpt-4o-mini";
   private readonly summaryPrompt =
-    "You are a medical note summarizer. Create a concise summary of the given medical note, focusing on key points and important information.";
+    "You are a medical note summarizer. Create a concise summary of the given medical note, focusing on key points and important information. Use SOAP format.";
   constructor() {
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
