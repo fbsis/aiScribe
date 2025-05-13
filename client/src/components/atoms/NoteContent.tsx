@@ -7,6 +7,9 @@ interface NoteContentProps {
 }
 
 const NoteContent: React.FC<NoteContentProps> = ({ note }) => {
+  if(note.content && note.status === 'done') {
+    return;
+  }
   if (note.audioFile) {
     return (
       <audio 

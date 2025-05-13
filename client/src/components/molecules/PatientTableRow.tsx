@@ -12,7 +12,7 @@ export const PatientTableRow: React.FC<PatientTableRowProps> = ({ patient }) => 
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/patients/${patient.id}`);
+    navigate(`/patients/${patient.id ?? ''}`);
   };
 
   return (
@@ -33,10 +33,10 @@ export const PatientTableRow: React.FC<PatientTableRowProps> = ({ patient }) => 
         </Link>
       </TableCell>
       <TableCell>
-        <StatusChip status={patient.status} />
+        <StatusChip status={patient.status ?? 'success'} />
       </TableCell>
-      <TableCell>{patient.task}</TableCell>
-      <TableCell>{patient.assigned}</TableCell>
+      <TableCell>Attended</TableCell>
+      <TableCell>Me</TableCell>
     </TableRow>
   );
 }; 

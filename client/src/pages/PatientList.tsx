@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { usePatients } from "../hooks/usePatients";
 import { PatientTable } from "../components/organisms/PatientTable";
 import { SearchBar } from "../components/molecules/SearchBar";
@@ -12,7 +12,7 @@ export default function PatientList() {
   const [search, setSearch] = useState("");
   const { data: patientsData, isLoading } = usePatients();
 
-  const filteredPatients = filterPatientsByName(patientsData ?? [] as Patient[], search);
+  const filteredPatients = filterPatientsByName(patientsData as Patient[] | undefined, search);
 
   return (
     <PageContainer>

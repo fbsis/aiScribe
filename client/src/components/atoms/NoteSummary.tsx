@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
 import { Note } from '../../services/patientService';
 
 interface NoteSummaryProps {
@@ -20,8 +21,8 @@ const NoteSummary: React.FC<NoteSummaryProps> = ({ note }) => {
   if (note.status === 'done' && note.summary) {
     return (
       <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
-        <Typography variant="caption" color="text.secondary">
-          AI Summary: {note.summary}
+        <Typography variant="caption" color="text.secondary" component="div">
+          AI Summary: <ReactMarkdown>{note.summary}</ReactMarkdown>
         </Typography>
       </Box>
     );

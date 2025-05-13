@@ -50,15 +50,26 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ patientId }) => {
       </Box>
 
       <Box sx={styles.notesList}>
-        {notes.map((note) => (
-          <NoteCard
-            key={note.id}
-            note={note}
-            isDeleting={isDeletingNote}
-            onDelete={handleDeleteNote}
-            formatDate={formatDate}
-          />
-        ))}
+        {notes.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <Typography variant="body1" gutterBottom>
+              No notes recorded yet
+            </Typography>
+            <Typography variant="body2">
+              Start by adding your first note to maintain a complete patient history
+            </Typography>
+          </Box>
+        ) : (
+          notes.map((note) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              isDeleting={isDeletingNote}
+              onDelete={handleDeleteNote}
+              formatDate={formatDate}
+            />
+          ))
+        )}
       </Box>
 
       <NoteModal
