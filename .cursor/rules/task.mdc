@@ -1,0 +1,29 @@
+---
+description: Hasura GQL Deprecated
+globs: 
+alwaysApply: false
+---
+Technical Interview Project: AI Scribe Notes Management Tool
+Overview
+You will build a lightweight AI Scribe Notes Management Tool. This tool allows users to:
+Create and view AI-generated clinical notes associated with patients.
+
+
+Input can be either typed or audio (basic audio upload is fine; transcription can use any AI API or open-source model).
+
+
+Each note is stored and associated with a mock patient.
+
+
+Users can view a list of notes and click on a note to view:
+
+
+The note content (transcribed/generated)
+
+
+Related patient details
+
+
+This tool simulates a core part of a home healthcare compliance suite, and we aim to assess your ability to implement clean, functional, and maintainable code in ak.
+
+For Design inspiration you can refer to some working prototypes we have in a related vertical

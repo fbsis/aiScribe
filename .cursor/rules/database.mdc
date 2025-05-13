@@ -1,0 +1,191 @@
+---
+description: Prisma Rules (https://www.prisma.io/docs/orm/more/ai-tools/cursor)
+globs: 
+alwaysApply: false
+---
+# Database Entity Guidelines
+
+## Entity Structure
+
+### Patient Entity
+```typescript
+model Patient {
+  id        UUID      @id @default(uuid())
+  name      String
+  dob       DateTime
+  notes     Note[]    @relation("PatientNotes")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("patients")
+}
+```
+
+### Note Entity
+```typescript
+model Note {
+  id          UUID       @id @default(uuid())
+  content     String     @db.Text
+  summary     String?    @db.Text
+  patientId   UUID       @map("patient_id")
+  patient     Patient    @relation("PatientNotes", fields: [patientId], references: [id])
+  audioFiles  AudioFile[] @relation("NoteAudio")
+  status      NoteStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
+
+  @@index([patientId])
+  @@map("notes")
+}
+
+enum NoteStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+```
+
+### AudioFile Entity
+```typescript
+model AudioFile {
+  id        UUID      @id @default(uuid())
+  path      String    @unique
+  duration  Int?      // in seconds
+  noteId    UUID      @map("note_id")
+  note      Note      @relation("NoteAudio", fields: [noteId], references: [id])
+  status    AudioStatus @default(PENDING)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([noteId])
+  @@map("audio_files")
+}
+
+enum AudioStatus {
+  PENDING
+  PROCESSING
+  TRANSCRIBED
+  FAILED
+}
+```
+
+## Entity Rules
+
+### General Rules
+1. **Naming Conventions**
+   - Use PascalCase for model names
+   - Use camelCase for field names
+   - Use snake_case for database column names (@map)
+   - Use plural form for table names (@@map)
+
+2. **Common Fields**
+   - Every entity must have:
+     - `id`: UUID primary key
+     - `createdAt`: Creation timestamp
+     - `updatedAt`: Last update timestamp
+     - `deletedAt`: Soft delete timestamp (nullable)
+
+3. **Relationships**
+   - Use explicit relation names
+   - Define foreign key fields with `@map`
+   - Add appropriate indexes for foreign keys
+   - Use meaningful relation names (e.g., "PatientNotes")
+
+4. **Enums**
+   - Use PascalCase for enum names
+   - Use UPPERCASE for enum values
+   - Define enums for status fields
+   - Keep enums in the same file as the model
+
+### Patient Rules
+1. **Fields**
+   - `name`: Required string
+   - `dob`: Required date
+   - One-to-many relationship with notes
+
+2. **Constraints**
+   - No unique constraints needed
+   - Index on id (default)
+
+### Note Rules
+1. **Fields**
+   - `content`: Required text field
+   - `summary`: Optional text field
+   - `status`: Required enum (PENDING, PROCESSING, COMPLETED, FAILED)
+   - Many-to-one relationship with patient
+   - One-to-many relationship with audio files
+
+2. **Constraints**
+   - Index on patientId
+   - Foreign key constraint on patientId
+
+### AudioFile Rules
+1. **Fields**
+   - `path`: Required unique string (MinIO path)
+   - `duration`: Optional integer (seconds)
+   - `status`: Required enum (PENDING, PROCESSING, TRANSCRIBED, FAILED)
+   - Many-to-one relationship with note
+
+2. **Constraints**
+   - Index on noteId
+   - Foreign key constraint on noteId
+   - Unique constraint on path
+
+## Best Practices
+
+### Data Types
+- Use `UUID` for IDs
+- Use `@db.Text` for long text fields
+- Use `DateTime` for timestamps
+- Use enums for status fields
+- Use appropriate integer types for numeric fields
+
+### Indexing
+- Index all foreign keys
+- Index fields used in frequent queries
+- Consider composite indexes for common query patterns
+
+### Soft Delete
+- Implement soft delete using `deletedAt`
+- Add middleware to filter soft-deleted records
+- Consider adding indexes on `deletedAt` if needed
+
+### Status Management
+- Use enums for status fields
+- Include appropriate status transitions
+- Document status flow in comments
+
+### Validation
+- Validate data before saving
+- Use Prisma's built-in validation
+- Add custom validation where needed
+
+### Performance
+- Use appropriate field types
+- Add necessary indexes
+- Consider query patterns
+- Use relations efficiently
+
+### Security
+- Never expose raw database models
+- Validate all inputs
+- Use proper access control
+- Sanitize file paths
+
+## Migration Guidelines
+1. Always create migrations for schema changes
+2. Test migrations in development
+3. Back up data before production migrations
+4. Use meaningful migration names
+5. Document breaking changes
+
+## Testing
+1. Create test factories for each entity
+2. Test all status transitions
+3. Test relationship constraints
+4. Test soft delete functionality
+5. Test validation rules
