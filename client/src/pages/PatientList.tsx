@@ -7,12 +7,12 @@ import { PageTitle } from "../components/atoms/PageTitle";
 import { PrimaryButton } from "../components/atoms/PrimaryButton";
 import { PageContainer } from "../components/molecules/PageContainer";
 import { filterPatientsByName } from "../utils/patientFilters";
-
+import { Patient } from "../types/patient";
 export default function PatientList() {
   const [search, setSearch] = useState("");
   const { data: patientsData, isLoading } = usePatients();
 
-  const filteredPatients = filterPatientsByName(patientsData ?? [], search);
+  const filteredPatients = filterPatientsByName(patientsData ?? [] as Patient[], search);
 
   return (
     <PageContainer>

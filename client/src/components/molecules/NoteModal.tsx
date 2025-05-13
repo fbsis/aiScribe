@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,74 +9,65 @@ import {
   Box,
   ToggleButtonGroup,
   ToggleButton,
-  IconButton,
   Typography,
-  Paper,
   CircularProgress,
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
-import DeleteIcon from '@mui/icons-material/Delete';
-import NoteAddIcon from '@mui/icons-material/NoteAdd';
-import MediaPlayer from './MediaPlayer';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
 
 interface NoteModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (note: { type: 'text' | 'audio'; content: string; file?: File }) => void;
+  onSubmit: (type: 'text' | 'audio', content: string | File) => Promise<void>;
 }
 
 const NoteModal: React.FC<NoteModalProps> = ({ open, onClose, onSubmit }) => {
   const [noteType, setNoteType] = useState<'text' | 'audio'>('text');
-  const [textNote, setTextNote] = useState('');
+  const [textContent, setTextContent] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const audioBlobRef = useRef<Blob | null>(null);
-
-  // Cleanup audio URL when modal closes
-  useEffect(() => {
-    return () => {
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
-    };
-  }, [audioUrl]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const handleTypeChange = (_: React.MouseEvent<HTMLElement>, newType: 'text' | 'audio') => {
     if (newType !== null) {
       setNoteType(newType);
-      setTextNote('');
+      setTextContent('');
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
         setAudioUrl(null);
       }
+      setAudioChunks([]);
+      audioChunksRef.current = [];
     }
   };
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      setMediaRecorder(recorder);
+      setAudioChunks([]);
+      audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => {
+      recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
+          audioChunksRef.current = [...audioChunksRef.current, e.data];
+          setAudioChunks(audioChunksRef.current);
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        audioBlobRef.current = audioBlob;
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
+        recorder.stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      recorder.start(100); // Collect data every 100ms
       setIsRecording(true);
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -84,90 +75,61 @@ const NoteModal: React.FC<NoteModalProps> = ({ open, onClose, onSubmit }) => {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
       setIsRecording(false);
     }
   };
 
-  const handleClear = () => {
-    setTextNote('');
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      if (noteType === 'text' && textContent.trim()) {
+        await onSubmit('text', textContent);
+      } else if (noteType === 'audio' && audioUrl) {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], 'audio-note.webm', { type: 'audio/webm' });
+        await onSubmit('audio', file);
+      }
+      handleClose();
+    } catch (error) {
+      console.error('Error submitting note:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setTextContent('');
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
       setAudioUrl(null);
     }
-    audioBlobRef.current = null;
+    setAudioChunks([]);
+    audioChunksRef.current = [];
+    onClose();
   };
-
-  const handleSubmit = async () => {
-    setIsUploading(true);
-    try {
-      if (noteType === 'text' && textNote.trim()) {
-        // Simulate API call for text note
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        onSubmit({ type: 'text', content: textNote });
-      } else if (noteType === 'audio' && audioBlobRef.current) {
-        // Simulate API call for audio note
-        const file = new File([audioBlobRef.current], 'audio-note.webm', { type: 'audio/webm' });
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        onSubmit({ type: 'audio', content: audioUrl!, file });
-      }
-      onClose();
-    } catch (error) {
-      console.error('Error submitting note:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const isSubmitDisabled = (noteType === 'text' && !textNote.trim()) || 
-                          (noteType === 'audio' && !audioUrl) ||
-                          isUploading;
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="sm" 
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-        }
-      }}
-    >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 1,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        pb: 2
-      }}>
-        <NoteAddIcon color="primary" />
-        Add Patient Note
-      </DialogTitle>
-      <DialogContent sx={{ pt: 3 }}>
-        <Box sx={{ mb: 3 }}>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Add New Note</DialogTitle>
+      <DialogContent>
+        <Box sx={{ mb: 2, mt: 1 }}>
           <ToggleButtonGroup
             value={noteType}
             exclusive
             onChange={handleTypeChange}
             aria-label="note type"
             fullWidth
-            sx={{
-              '& .MuiToggleButton-root': {
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 3,
-              }
-            }}
           >
             <ToggleButton value="text" aria-label="text note">
+              <TextFieldsIcon sx={{ mr: 1 }} />
               Text Note
             </ToggleButton>
             <ToggleButton value="audio" aria-label="audio note">
+              <MicIcon sx={{ mr: 1 }} />
               Audio Note
             </ToggleButton>
           </ToggleButtonGroup>
@@ -175,97 +137,60 @@ const NoteModal: React.FC<NoteModalProps> = ({ open, onClose, onSubmit }) => {
 
         {noteType === 'text' ? (
           <TextField
-            fullWidth
+            autoFocus
             multiline
             rows={4}
-            value={textNote}
-            onChange={(e) => setTextNote(e.target.value)}
-            placeholder="Enter your note here..."
-            variant="outlined"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-              }
-            }}
+            fullWidth
+            label="Note Content"
+            value={textContent}
+            onChange={(e) => setTextContent(e.target.value)}
+            disabled={isSubmitting}
           />
         ) : (
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              p: 2, 
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
-              bgcolor: 'background.default'
-            }}
-          >
-            {!audioUrl ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <IconButton
-                  color={isRecording ? 'error' : 'primary'}
-                  onClick={isRecording ? stopRecording : startRecording}
-                  sx={{ 
-                    width: 48, 
-                    height: 48,
-                    bgcolor: isRecording ? 'error.light' : 'primary.light',
-                    '&:hover': {
-                      bgcolor: isRecording ? 'error.main' : 'primary.main',
-                    }
-                  }}
-                >
-                  {isRecording ? <StopIcon /> : <MicIcon />}
-                </IconButton>
-                {isRecording && (
-                  <Typography color="error" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={16} color="error" />
-                    Recording...
-                  </Typography>
-                )}
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <MediaPlayer audioUrl={audioUrl} />
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <IconButton 
-                    onClick={handleClear} 
-                    color="error"
-                    sx={{ 
-                      '&:hover': { 
-                        bgcolor: 'error.light',
-                      }
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+              <Button
+                variant="contained"
+                color={isRecording ? 'error' : 'primary'}
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isSubmitting}
+                startIcon={isRecording ? <StopIcon /> : <MicIcon />}
+              >
+                {isRecording ? 'Stop Recording' : 'Start Recording'}
+              </Button>
+            </Box>
+            {audioUrl && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  Recording Preview:
+                </Typography>
+                <audio controls src={audioUrl} style={{ width: '100%' }} />
               </Box>
             )}
-          </Paper>
+          </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Button 
-          onClick={onClose}
-          disabled={isUploading}
-          sx={{ 
-            textTransform: 'none',
-            fontWeight: 500,
-          }}
-        >
+      <DialogActions>
+        <Button onClick={handleClose} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
-          disabled={isSubmitDisabled} 
+        <Button
+          onClick={handleSubmit}
           variant="contained"
-          startIcon={isUploading ? <CircularProgress size={20} /> : null}
-          sx={{ 
-            textTransform: 'none',
-            fontWeight: 500,
-            minWidth: 100,
-          }}
+          disabled={
+            isSubmitting ||
+            (noteType === 'text' && !textContent.trim()) ||
+            (noteType === 'audio' && !audioUrl)
+          }
         >
-          {isUploading ? 'Saving...' : 'Save Note'}
+          {isSubmitting ? (
+            <>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              Submitting...
+            </>
+          ) : (
+            'Submit'
+          )}
         </Button>
       </DialogActions>
     </Dialog>

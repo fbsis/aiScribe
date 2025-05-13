@@ -17,6 +17,7 @@ export class Note {
   patientId: string;
 
   @ManyToOne(() => Patient, patient => patient.notes)
+  @JoinColumn({ name: 'patientId' })
   patient: Patient;
 
   @Column('text')
@@ -35,8 +36,10 @@ export class Note {
   @Column('text', { nullable: true })
   errorMessage: string;
 
-  @OneToOne(() => AudioFile, audioFile => audioFile.note)
-  @JoinColumn()
+  @OneToOne(() => AudioFile, audioFile => audioFile.note, { 
+    cascade: true,
+    onDelete: 'CASCADE'
+  })
   audioFile: AudioFile;
 
   @CreateDateColumn()

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from 'typeorm';
 import { Note } from './Note';
 
 @Entity('audio_files')
@@ -9,8 +9,8 @@ export class AudioFile {
   @Column()
   noteId: string;
 
-  @OneToOne(() => Note, note => note.audioFile)
-  @JoinColumn()
+  @OneToOne(() => Note, note => note.audioFile, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'noteId' })
   note: Note;
 
   @Column()
@@ -24,4 +24,7 @@ export class AudioFile {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 } 

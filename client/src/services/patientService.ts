@@ -2,35 +2,54 @@ import api from './api';
 
 export interface Patient {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
   email: string;
   phone: string;
-  dateOfBirth: string;
-  gender: 'male' | 'female' | 'other';
   address: string;
-  medicalHistory: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Note {
+  id: string;
+  patientId: string;
+  content: string;
+  summary?: string;
+  status: 'processing' | 'done' | 'error';
+  errorMessage?: string;
+  audioFile?: {
+    id: string;
+    filePath: string;
+    publicUrl: string;
+    duration: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CreatePatientRequest {
-  name: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
   email: string;
   phone: string;
-  dateOfBirth: string;
-  gender: 'male' | 'female' | 'other';
   address: string;
-  medicalHistory: string;
 }
 
 export interface UpdatePatientRequest extends Partial<CreatePatientRequest> {}
 
-export interface Note {
-  id: string;
-  type: 'text' | 'audio';
+export interface CreateTextNoteRequest {
+  patientId: string;
   content: string;
-  createdAt: string;
-  file?: File;
+}
+
+export interface CreateAudioNoteRequest {
+  patientId: string;
+  audio: File;
 }
 
 export const patientService = {
@@ -43,30 +62,46 @@ export const patientService = {
   createPatient: (patient: CreatePatientRequest) => 
     api.post<Patient>('/patients', patient).then(res => res.data),
 
-  updatePatient: (id: string, patient: UpdatePatientRequest) => 
-    api.put<Patient>(`/patients/${id}`, patient).then(res => res.data),
+  updatePatient: (id: string, patient: Partial<CreatePatientRequest>) => 
+    api.patch<Patient>(`/patients/${id}`, patient).then(res => res.data),
 
   deletePatient: (id: string) => 
     api.delete(`/patients/${id}`).then(res => res.data),
 
-  // Note-related methods
   getPatientNotes: (patientId: string) => 
-    api.get<Note[]>(`/patients/${patientId}/notes`).then(res => res.data),
+    api.get<Note[]>(`/notes/patient/${patientId}`).then(res => res.data),
 
-  addPatientNote: (patientId: string, note: Omit<Note, 'id' | 'createdAt'>) => {
+  addPatientNote: (patientId: string, content: string) => 
+    api.post<Note>('/notes', { patientId, content }).then(res => res.data),
+
+  addPatientAudioNote: (patientId: string, audioFile: File) => {
     const formData = new FormData();
-    formData.append('type', note.type);
-    formData.append('content', note.content);
-    if (note.file) {
-      formData.append('file', note.file);
-    }
-    return api.post<Note>(`/patients/${patientId}/notes`, formData, {
+    formData.append('patientId', patientId);
+    formData.append('audio', audioFile);
+    return api.post<Note>('/notes/audio', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     }).then(res => res.data);
   },
 
-  deletePatientNote: (patientId: string, noteId: string) => 
-    api.delete(`/patients/${patientId}/notes/${noteId}`).then(res => res.data),
+  deletePatientNote: (noteId: string) => 
+    api.delete(`/notes/${noteId}`).then(res => res.data),
+
+  getNoteById: (noteId: string) => 
+    api.get<Note>(`/notes/${noteId}`).then(res => res.data),
+
+  createTextNote: (note: CreateTextNoteRequest) => 
+    api.post<Note>('/notes', note).then(res => res.data),
+
+  createAudioNote: (note: CreateAudioNoteRequest) => {
+    const formData = new FormData();
+    formData.append('patientId', note.patientId);
+    formData.append('audio', note.audio);
+    return api.post<Note>('/notes/audio', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data)
+  }
 }; 
