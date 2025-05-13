@@ -16,6 +16,7 @@ const router = Router();
 const storageService = new StorageService();
 const aiService = new AIService();
 const queueManager = new QueueManager(aiService, storageService);
+
 const noteService = new NoteService(AppDataSource, storageService, queueManager);
 const upload = multer({ storage: multer.memoryStorage() });
 

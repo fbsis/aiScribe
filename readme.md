@@ -1,5 +1,10 @@
 # Medical Notes System Architecture
 
+## Documentation Links
+
+- [Architecture Overview](docs/architecture.md) - Detailed system architecture, components, and technical decisions
+- [Project Planning](docs/planning.md) - Project roadmap, milestones, and development phases
+
 ## Requirements
 
 ### System Requirements
